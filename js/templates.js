@@ -3,7 +3,7 @@
 
     window.SIGNATURE_TEMPLATES = {
         expresso900x230: {
-            name: 'Expresso Tecnologia - 900x230',
+            name: 'Assinatura - 900x230',
             width: 900,
             height: 230,
             regions: {
