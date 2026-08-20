@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste de integração</title>
+</head>
+<body data-status="running">
+    <div id="preview"></div>
+    <pre id="result">Executando…</pre>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="../js/templates.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/imageProcessor.js"></script>
+    <script src="../js/signatureGenerator.js"></script>
+    <script src="../js/zipGenerator.js"></script>
+    <script>
+        (async function () {
+            'use strict';
+
+            var checks = [];
+            var template = window.SIGNATURE_TEMPLATES.expresso900x230;
+
+            function assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message);
+                }
+                checks.push('OK: ' + message);
+            }
+
+            function canvasToImage(canvas) {
+                return new Promise(function (resolve, reject) {
+                    var image = new Image();
+                    image.onload = function () { resolve(image); };
+                    image.onerror = reject;
+                    image.src = canvas.toDataURL('image/png');
+                });
+            }
+
+            try {
+                var canvas = document.createElement('canvas');
+                var context = canvas.getContext('2d');
+                var gradient;
+                var image;
+                var slices;
+                var fullImageBlob;
+                var exportAssets;
+                var mediumTemplate;
+                var mediumImage;
+                var mediumSlices;
+                var mediumFullBlob;
+                var mediumAssets;
+                var mediumHtml;
+                var compactTemplate;
+                var compactImage;
+                var compactSlices;
+                var compactFullBlob;
+                var compactAssets;
+                var compactHtml;
+                var links;
+                var html;
+                var previewUrls;
+                var zipBlob;
+                var zipContents;
+                var zipEntries;
+                var allSizesZipBlob;
+                var allSizesZipContents;
+                var allSizesEntries;
+                var rejectedUnsafeUrl = false;
+
+                canvas.width = template.width;
+                canvas.height = template.height;
+                gradient = context.createLinearGradient(0, 0, template.width, template.height);
+                gradient.addColorStop(0, '#122341');
+                gradient.addColorStop(0.5, '#176bff');
+                gradient.addColorStop(1, '#42d5d0');
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#ffffff';
+                context.font = 'bold 38px sans-serif';
+                context.fillText('ASSINATURA DE TESTE', 55, 90);
+                context.fillStyle = '#0b1830';
+                context.fillRect(139, 179, 130, 51);
+
+                image = await canvasToImage(canvas);
+                assert(window.SignatureImageProcessor.validateImage(image, template), 'valida a imagem 900x230');
+
+                assert(window.SIGNATURE_SIZES.original.scale === 1, 'configura o tamanho Original em 100%');
+                mediumTemplate = window.SignatureImageProcessor.scaleTemplate(template, window.SIGNATURE_SIZES.medium.scale);
+                assert(mediumTemplate.width === 720 && mediumTemplate.height === 184, 'calcula o tamanho Médio em 720x184');
+                assert(mediumTemplate.regions.phone.x === 462 && mediumTemplate.regions.phone.width === 258, 'escala as coordenadas do tamanho Médio');
+                mediumImage = window.SignatureImageProcessor.resizeImage(image, mediumTemplate.width, mediumTemplate.height);
+                mediumSlices = await window.SignatureImageProcessor.createSlicedAssets(mediumImage, mediumTemplate);
+                assert(await window.SignatureImageProcessor.verifyReconstruction(mediumImage, mediumSlices, mediumTemplate), 'reconstrói o tamanho Médio pixel a pixel');
+
+                compactTemplate = window.SignatureImageProcessor.scaleTemplate(template, window.SIGNATURE_SIZES.compact.scale);
+                assert(compactTemplate.width === 585 && compactTemplate.height === 150, 'calcula o tamanho Compacto em 585x150');
+                compactImage = window.SignatureImageProcessor.resizeImage(image, compactTemplate.width, compactTemplate.height);
+                compactSlices = await window.SignatureImageProcessor.createSlicedAssets(compactImage, compactTemplate);
+                assert(await window.SignatureImageProcessor.verifyReconstruction(compactImage, compactSlices, compactTemplate), 'reconstrói o tamanho Compacto pixel a pixel');
+
+                slices = await window.SignatureImageProcessor.createSlicedAssets(image, template);
+                assert(slices.length === 40, 'gera as 40 células da grade dinâmica para conferência');
+                assert(await window.SignatureImageProcessor.verifyReconstruction(image, slices, template), 'reconstrói a imagem pixel a pixel');
+                fullImageBlob = await window.SignatureImageProcessor.cropImage(image, {
+                    x: 0,
+                    y: 0,
+                    width: template.width,
+                    height: template.height
+                });
+                exportAssets = [{
+                    name: 'assinatura.png',
+                    blob: fullImageBlob,
+                    width: template.width,
+                    height: template.height
+                }].concat(slices);
+
+                assert(window.SignatureUtils.slugify('  Nícole  Medeiros! ') === 'nicole-medeiros', 'sanitiza o nome do arquivo');
+                assert(window.SignatureUtils.normalizePhone('+55 (11) 2476-5900') === 'tel:+551124765900', 'normaliza o telefone');
+                assert(window.SignatureUtils.normalizeWhatsApp('+55 (11) 2476-5900') === 'https://wa.me/551124765900', 'normaliza o WhatsApp');
+                assert(window.SignatureUtils.normalizeInstagram('@nicole') === 'https://instagram.com/nicole', 'normaliza o Instagram');
+                assert(window.SignatureUtils.normalizeUrl('empresa.com') === 'https://empresa.com/', 'normaliza o site');
+
+                try {
+                    window.SignatureUtils.normalizeUrl('javascript:alert(1)');
+                } catch (error) {
+                    rejectedUnsafeUrl = true;
+                }
+                assert(rejectedUnsafeUrl, 'rejeita URL com protocolo inseguro');
+
+                links = {
+                    phone: 'tel:+551124765900',
+                    email: 'mailto:usuario@empresa.com',
+                    whatsapp: 'https://wa.me/551124765900',
+                    instagram: '',
+                    linkedin: 'https://linkedin.com/in/usuario',
+                    website: 'https://empresa.com/'
+                };
+                mediumFullBlob = await window.SignatureImageProcessor.cropImage(mediumImage, {
+                    x: 0,
+                    y: 0,
+                    width: mediumTemplate.width,
+                    height: mediumTemplate.height
+                });
+                mediumAssets = [{
+                    name: 'assinatura.png',
+                    blob: mediumFullBlob,
+                    width: mediumTemplate.width,
+                    height: mediumTemplate.height
+                }].concat(mediumSlices);
+                mediumHtml = window.SignatureGenerator.buildSignatureDocument({
+                    template: mediumTemplate,
+                    links: links,
+                    assets: mediumAssets
+                });
+                compactFullBlob = await window.SignatureImageProcessor.cropImage(compactImage, {
+                    x: 0,
+                    y: 0,
+                    width: compactTemplate.width,
+                    height: compactTemplate.height
+                });
+                compactAssets = [{
+                    name: 'assinatura.png',
+                    blob: compactFullBlob,
+                    width: compactTemplate.width,
+                    height: compactTemplate.height
+                }].concat(compactSlices);
+                compactHtml = window.SignatureGenerator.buildSignatureDocument({
+                    template: compactTemplate,
+                    links: links,
+                    assets: compactAssets
+                });
+                assert(compactHtml.includes('width="585" height="150"'), 'gera o HTML Compacto em 585x150');
+                assert(compactHtml.includes('href="tel:+551124765900"'), 'mantém os links no HTML Compacto');
+
+                previewUrls = {};
+                exportAssets.forEach(function (asset) {
+                    previewUrls[asset.name] = URL.createObjectURL(asset.blob);
+                });
+                document.getElementById('preview').innerHTML = window.SignatureGenerator.buildSignatureTableHtml({
+                    template: template,
+                    links: links,
+                    assets: exportAssets,
+                    resolveAssetUrl: function (asset) { return previewUrls[asset.name]; }
+                });
+                html = window.SignatureGenerator.buildSignatureDocument({
+                    template: template,
+                    links: links,
+                    assets: exportAssets
+                });
+
+                assert(html.includes('cellpadding="0"') && html.includes('cellspacing="0"'), 'gera tabela sem espaçamentos');
+                assert((html.match(/<tr /g) || []).length === 2, 'usa somente linhas integrais, sem linhas por faixa horizontal');
+                assert((html.match(/<img /g) || []).length === slices.length, 'exporta os recortes visíveis em colunas');
+                assert(!html.includes('<map '), 'não depende de mapa invisível removido pelo Outlook');
+                assert(html.includes('background="assets/assinatura.png"'), 'usa a imagem completa como fundo antifaixa');
+                assert(html.includes('href="tel:+551124765900"'), 'preserva o link real do telefone');
+                assert(html.includes('href="mailto:usuario@empresa.com"'), 'preserva o link real do e-mail');
+                assert(!html.includes('href=""'), 'mantém ícone opcional sem link vazio');
+                assert((html.match(/<a href=/g) || []).length === 5, 'cria âncoras visíveis e omite somente o link opcional vazio');
+                assert(html.includes('font-size:0;line-height:0'), 'zera altura de linha na tabela');
+
+                assert(typeof window.JSZip !== 'undefined', 'carrega o JSZip pelo CDN');
+                window.SignatureUtils.downloadBlob = function () {};
+                zipBlob = await window.SignatureZipGenerator.generateSignatureZip({
+                    folderName: 'assinatura-teste',
+                    html: html,
+                    assets: exportAssets
+                });
+                assert(zipBlob.size > 0, 'gera um arquivo ZIP não vazio');
+                zipContents = await window.JSZip.loadAsync(zipBlob);
+                zipEntries = Object.keys(zipContents.files);
+                assert(zipEntries.includes('assinatura-teste/assinatura.html'), 'inclui assinatura.html no ZIP');
+                assert(zipEntries.includes('assinatura-teste/LEIA-ME.txt'), 'inclui LEIA-ME.txt no ZIP');
+                assert(zipEntries.includes('assinatura-teste/assets/assinatura.png'), 'inclui a imagem única no ZIP');
+                assert(zipEntries.filter(function (name) { return /\/assets\/slice-.*\.png$/.test(name); }).length === slices.length, 'inclui todos os recortes clicáveis no ZIP');
+
+                allSizesZipBlob = await window.SignatureZipGenerator.generateAllSizesZip({
+                    archiveName: 'assinatura-teste-3-tamanhos',
+                    variants: [
+                        { label: 'Original', folderName: 'original-900x230', width: 900, height: 230, html: html, assets: exportAssets },
+                        { label: 'Médio', folderName: 'medio-720x184', width: 720, height: 184, html: mediumHtml, assets: mediumAssets },
+                        { label: 'Compacto', folderName: 'compacto-585x150', width: 585, height: 150, html: compactHtml, assets: compactAssets }
+                    ]
+                });
+                assert(allSizesZipBlob.size > zipBlob.size, 'gera um ZIP único com os três tamanhos');
+                allSizesZipContents = await window.JSZip.loadAsync(allSizesZipBlob);
+                allSizesEntries = Object.keys(allSizesZipContents.files);
+                assert(allSizesEntries.includes('assinatura-teste-3-tamanhos/original-900x230/assinatura.html'), 'inclui a pasta Original no pacote completo');
+                assert(allSizesEntries.includes('assinatura-teste-3-tamanhos/medio-720x184/assinatura.html'), 'inclui a pasta Médio no pacote completo');
+                assert(allSizesEntries.includes('assinatura-teste-3-tamanhos/compacto-585x150/assinatura.html'), 'inclui a pasta Compacto no pacote completo');
+                assert(allSizesEntries.includes('assinatura-teste-3-tamanhos/LEIA-ME.txt'), 'inclui instruções gerais no pacote completo');
+
+                document.body.dataset.status = 'passed';
+                document.getElementById('result').textContent = 'PASSOU\n' + checks.join('\n');
+            } catch (error) {
+                document.body.dataset.status = 'failed';
+                document.getElementById('result').textContent = 'FALHOU\n' + error.stack;
+            }
+        }());
+    </script>
+</body>
+</html>

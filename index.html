@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gere assinaturas HTML clicáveis para Outlook sem enviar dados para servidores.">
+    <title>Gerador de Assinaturas de E-mail</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="page-header">
+        <div class="container header-content">
+            <div>
+                <p class="eyebrow">Ferramenta interna</p>
+                <h1>Gerador de Assinaturas de E-mail</h1>
+                <p class="subtitle">Envie a assinatura em PNG e configure os links clicáveis.</p>
+            </div>
+            <div class="privacy-badge" aria-label="Informação de privacidade">
+                <span class="privacy-icon" aria-hidden="true">●</span>
+                <span><strong>Processamento local</strong><small>Nenhum dado sai deste navegador.</small></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container page-main">
+        <noscript>
+            <div class="alert alert-error">Ative o JavaScript no navegador para usar o gerador.</div>
+        </noscript>
+
+        <form id="signature-form" novalidate>
+            <section class="card setup-card" aria-labelledby="setup-title">
+                <div class="section-heading">
+                    <span class="step-number" aria-hidden="true">1</span>
+                    <div>
+                        <h2 id="setup-title">Imagem e modelo</h2>
+                        <p>Selecione o modelo correspondente à arte recebida.</p>
+                    </div>
+                </div>
+
+                <div class="setup-grid">
+                    <div class="field-group">
+                        <label for="template-select">Modelo da assinatura</label>
+                        <select id="template-select" name="template"></select>
+                        <span class="field-hint" id="template-dimensions"></span>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="size-select">Tamanho da assinatura</label>
+                        <select id="size-select" name="signatureSize"></select>
+                        <span class="field-hint" id="size-dimensions"></span>
+                    </div>
+
+                    <div class="field-group upload-group field-wide">
+                        <label for="image-input">Imagem da assinatura</label>
+                        <label class="file-picker" for="image-input">
+                            <span class="file-picker-icon" aria-hidden="true">↑</span>
+                            <span><strong>Selecionar PNG</strong><small>Escolha a arte final da assinatura</small></span>
+                        </label>
+                        <input id="image-input" name="image" type="file" accept="image/png,.png">
+                        <div id="file-meta" class="file-meta" aria-live="polite">Nenhum arquivo selecionado.</div>
+                    </div>
+                </div>
+
+                <div id="image-validation" class="validation-message" role="status" aria-live="polite"></div>
+
+                <div id="source-preview" class="source-preview is-hidden">
+                    <div class="preview-toolbar">
+                        <div>
+                            <h3>Imagem original</h3>
+                            <p>Use as marcações para conferir as coordenadas do modelo.</p>
+                        </div>
+                        <label class="switch-control">
+                            <input id="show-regions" type="checkbox">
+                            <span>Mostrar regiões clicáveis</span>
+                        </label>
+                    </div>
+                    <div id="original-stage" class="original-stage">
+                        <img id="source-image" alt="Pré-visualização da imagem PNG selecionada">
+                        <div id="regions-overlay" class="regions-overlay" aria-hidden="true"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="links-title">
+                <div class="section-heading">
+                    <span class="step-number" aria-hidden="true">2</span>
+                    <div>
+                        <h2 id="links-title">Dados e links</h2>
+                        <p>Os dados servem apenas para criar os links; a imagem não será alterada.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group field-wide">
+                        <label for="employee-name">Nome do colaborador</label>
+                        <input id="employee-name" name="employeeName" type="text" autocomplete="off" placeholder="Nicole Medeiros" required>
+                        <span class="field-hint">Usado somente no nome do arquivo ZIP.</span>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="phone">Telefone</label>
+                        <input id="phone" name="phone" type="tel" autocomplete="off" placeholder="+55 11 2476-5900" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="whatsapp">WhatsApp</label>
+                        <input id="whatsapp" name="whatsapp" type="tel" autocomplete="off" placeholder="+55 (11) 2476-5900" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="email">E-mail</label>
+                        <input id="email" name="email" type="email" autocomplete="off" placeholder="usuario@empresa.com" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="website">Site</label>
+                        <input id="website" name="website" type="text" inputmode="url" autocomplete="off" placeholder="empresa.com" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="instagram">Instagram <span class="optional">Opcional</span></label>
+                        <input id="instagram" name="instagram" type="text" autocomplete="off" placeholder="@usuario ou instagram.com/usuario">
+                    </div>
+
+                    <div class="field-group">
+                        <label for="linkedin">LinkedIn <span class="optional">Opcional</span></label>
+                        <input id="linkedin" name="linkedin" type="text" inputmode="url" autocomplete="off" placeholder="linkedin.com/in/usuario">
+                    </div>
+                </div>
+            </section>
+
+            <section class="card preview-card" aria-labelledby="preview-title">
+                <div class="section-heading preview-heading">
+                    <span class="step-number" aria-hidden="true">3</span>
+                    <div>
+                        <h2 id="preview-title">Preview da assinatura</h2>
+                        <p>Esta visualização usa a mesma estrutura clicável do arquivo exportado.</p>
+                    </div>
+                    <span id="integrity-badge" class="integrity-badge is-hidden">Integridade visual verificada</span>
+                </div>
+
+                <div id="signature-preview" class="signature-preview">
+                    <div class="empty-preview">
+                        <span aria-hidden="true">▧</span>
+                        <strong>O preview aparecerá aqui</strong>
+                        <p>Selecione uma imagem PNG compatível para começar.</p>
+                    </div>
+                </div>
+
+                <p class="preview-note">Os links web abrem em uma nova aba. Telefone e e-mail usam os aplicativos padrão do computador.</p>
+            </section>
+
+            <div id="app-message" class="app-message" role="status" aria-live="polite"></div>
+
+            <div class="actions">
+                <button id="clear-button" class="button button-secondary" type="button">Limpar</button>
+                <button id="preview-button" class="button button-outline" type="button">Atualizar preview</button>
+                <button id="generate-button" class="button button-outline" type="submit">
+                    <span>Baixar tamanho selecionado</span>
+                    <span aria-hidden="true">↓</span>
+                </button>
+                <button id="generate-all-button" class="button button-primary" type="button">
+                    <span>Baixar os 3 tamanhos</span>
+                    <span aria-hidden="true">↓</span>
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <footer class="page-footer">
+        <div class="container">
+            <strong>Privacidade por padrão.</strong> Sua imagem e seus dados não são enviados para nenhum servidor. Todo o processamento acontece neste navegador.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="js/templates.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/imageProcessor.js"></script>
+    <script src="js/signatureGenerator.js"></script>
+    <script src="js/zipGenerator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
